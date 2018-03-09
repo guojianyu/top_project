@@ -1,0 +1,33 @@
+
+CREATE TABLE [dbo].[Crawl_Task](
+	[RID] [int] IDENTITY(1,1) NOT NULL,
+	[Task_Name] [nvarchar](100) NULL,					任务名称
+	[Task_URL] [nvarchar](100) NULL,					(入口地址)
+	[Task_On_rule] [nvarchar](300) NULL,				url必须含有     用:||$分割
+	[Task_Out_rule] [nvarchar](300) NULL,				url必须不含有  用:||$分割
+	[Task_Deep] [int] NULL,								(匹配深度)
+	[Task_Status] [int] NULL,							任务执行状态（0初始状态，1完成状态）
+	[Task_Match_field] [nvarchar](max) NULL,			(匹配字段)每个字段和下一个字段用:||$分割
+	[Task_Match_rule] [nvarchar](max) NULL,				(对应匹配字段的规则)，每个字段的规则和下一个字段的规则用:||$分割
+	[Creat_Date] [datetime] NULL,						创建日期  可忽略
+ CONSTRAINT [PK_Crawl_Task] PRIMARY KEY CLUSTERED 
+(
+	[RID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+CREATE TABLE [dbo].[Crawl_Task_Rule](
+	[RID] [int] IDENTITY(1,1) NOT NULL,
+	[Task_RID] [int] Not NULL,					Task_Rid(与任务ID多对一)
+	[Rule_URL] [nvarchar](300) NULL,			Url(在此url下得到的结果)
+	[Rule_Match_field] [nvarchar](max) NULL,	(匹配到的字段)
+	[Rule_Match_rule] [nvarchar](max) NULL,		(匹配到的内容)
+
+	[Creat_Date] [datetime] NULL,
+ CONSTRAINT [PK_Crawl_Task_Rule] PRIMARY KEY CLUSTERED 
+(
+	[RID] ASC
+)WITH (PAD_INDEX  = OFF, STATISTICS_NORECOMPUTE  = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS  = ON, ALLOW_PAGE_LOCKS  = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO

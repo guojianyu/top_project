@@ -1,0 +1,22 @@
+http://www.hystemcell.com/article_cat-11.html
+http://www.rxys.com/
+http://jibing.myzx.cn/
+http://ttjk.com/
+https://www.nvxjk.com/
+http://www.healthdp.cn/
+http://health.newssc.org/
+http://www.jk031.com/
+http://www.ccun.cn
+http://www.517jkw.com
+http://health.oeeee.com/
+https://www.120ask.com
+http://www.ys8.com/
+http://www.jiankang4.com/
+http://www.bioon.com
+
+   task = obj.find_modify({'Task_Status':0},{'$set':{'Task_Status':1,}})#获取任务并将任务更改为就绪状态（1）就绪状态
+                    if not task:
+                        time.sleep(1)
+                    else:
+                        #task = [task['Task_URL'],task['Task_On_rule'],task['Task_Out_rule'],task['Task_Deep'],task['Task_Match_field'],task['Task_Match_rule'],task['Task_isClear'],str(task['_id']),]
+                        myqueue.put(task)

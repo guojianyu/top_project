@@ -1,0 +1,16 @@
+存储百度文章的表结构的字段含义：Baidu_Search_Result
+Article_RID,   文章ID
+Compare_URL,   百度文章URL
+Compare_Title   百度文章标题
+Compare_Keywords. 百度文章关键字
+Compare_Description 百度文章描述
+Compare_Content    百度文章内容
+Compare_Summary_Baidu  #百度的摘要
+Compare_Summary  #程序获取的摘要
+Article_Keyword  #百度文章的所有关键字
+Article_keywords #百度文章的关键字与词频
+Compare_Article_Similar  #原始文章与百度文章的相似度
+
+存储关键字语句的表结构及字段：
+Keyword   关键字
+Sentence   关键字所在的语句（唯一索引）

@@ -1,0 +1,13 @@
+db[Crawl_Task][Crawl_Task_Rule]#该数据库存储爬虫采集的所有数据，原始数据可能存在重复
+flag=0代表数据还没有被清洗
+flag =1代表清洗完成
+flag =2代表该条数据重复
+db[Crawl_Task][Finish_Data] #该数据库存储清洗后的数据
+flag=0没有被转移到sql
+flag=1被转移到sql
+flag=2转移sql中出错
+db[Crawl_Task][Finish_Data_Summary]#该数据库存储Finish_Data表中从Rule_Match_Cs字段程序提取的摘要，和从百度获取的相关搜索，还有文章id
+
+db[Baidu_Search][Baidu_Search_Result]#该数据库存储根据Finish_Data表中Rule_Match_T百度搜索的文章和其他关键内容
+
+db[Keyword_Sentence][Keyword_Sentence]#数据表中存储根据根据Finish_Data表中Rule_Match_T百度搜索的文章中的关键字和关键字对应的语句。

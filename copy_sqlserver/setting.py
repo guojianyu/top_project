@@ -1,0 +1,5 @@
+DATABASES_IP = '192.168.1.10'
+#DATABASES = 'Baidu_Search'
+#DATA_DB = 'Article_list'
+DATABASES = 'Crawl_Task'
+DATA_DB = 'auto_clean_data'

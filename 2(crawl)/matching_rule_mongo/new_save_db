@@ -1,0 +1,7 @@
+存储网页内容数据库结构如下：
+任务ID：task_id  （关联下发的任务id）
+网页的url：url (唯一索引)
+html文件: html
+入库时间：crate_time
+
+
