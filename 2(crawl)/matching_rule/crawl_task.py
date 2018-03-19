@@ -4,13 +4,14 @@
  * 要是你尝试玩弄这段代码的话，你将会在无尽的通宵中不断地咒骂自己为什么会认为自己聪明到可以优化这段代码。
  * 现在请关闭这个文件去玩点别的吧。
 """
-import db_oprate
+import gc
 from bs4 import BeautifulSoup
 import requests,re,json,copy,os,time
 from gevent import monkey,pool; monkey.patch_socket()
 import gevent
 from tld import get_tld
 import DB_Connect
+import db_oprate
 from  newspaper import  Article
 from urllib.parse import urljoin
 import threading
@@ -20,9 +21,9 @@ from selenium.webdriver.common.proxy import ProxyType
 from fake_useragent import UserAgent
 import queue
 ua = UserAgent()
+
 class crawl_obj:
     def __init__(self,concurrency=100):#并发个数
-        self.db_obj = DB_Connect.task_opt()#操作数据库对象
         self.mongo_obj = db_oprate.collection_db()#mongo数据库对象
         self.headersParameters = {  # 发送HTTP请求时的HEAD信息，用于伪装为浏览器
             'Connection': 'Keep-Alive',
@@ -32,9 +33,11 @@ class crawl_obj:
             'User-Agent': ua.random
         }
         self.proxies ={}#requestsd的代理
-        self.timeout = 30
-        self.phant_path = '/home/topinfo/matching_rule/phantomjs-2.1.1-linux-x86_64/bin/phantomjs'#无头浏览器的路径
+        self.timeout = 10
+        self.phant_path = '/home/topinfo/phantomjs-2(crawl).1.1-linux-x86_64/bin/phantomjs'#无头浏览器的路径
         self.pgevent = pool.Pool(concurrency)
+        self.db_obj = DB_Connect.task_opt()
+
     def parsing_text(self,test):
         html = ''
         try:
@@ -59,7 +62,7 @@ class crawl_obj:
 
     def save_data(self,html,url):
         try:
-            tmp_dict = {}
+            tmp_dict = {'description':'0','keywords':'0','title':'0','path':'0'}
             start = time.time()
             for count, item in enumerate(self.Task_Match_rule):
                 tmp = [item[i:i + 2] for i in range(0, len(item), 2)]
@@ -81,6 +84,7 @@ class crawl_obj:
                 #print('匹配结果为：', match_res,type(match_res))
                 tmp_dict[self.Task_Match_field[count]] =  match_res
                 # 将数据写入数据库
+
             try:
                 """
                 self.db_obj.insert_Crawl_Task_Rule(self.Task[-1],self.domain,url,tmp_dict['title'],tmp_dict['description'],tmp_dict['keywords'],
@@ -88,28 +92,32 @@ class crawl_obj:
                                                    )
             """
 
-
                 auto_content = self.auto_content(html)
-                if auto_content and len(auto_content)>200:
-                    tmp = {'Task_RID':self.Task[-1],'Rule_Domain':self.domain,'Rule_URL':url,
-                           'Rule_Match_T':tmp_dict['title'],'Rule_Match_D':tmp_dict['description'],'Rule_Match_K':tmp_dict['keywords'],
-                           'Rule_Match_P':tmp_dict['path'],'Rule_Match_C':tmp_dict['content'],'Rule_Match_Cs':auto_content,
+
+                if auto_content and len(auto_content) > 100:
+                    tmp = {'Task_RID': self.Task[-1], 'Rule_Domain': self.domain, 'Rule_URL': url,
+                           'Rule_Match_T': tmp_dict['title'], 'Rule_Match_D': tmp_dict['description'],
+                           'Rule_Match_K': tmp_dict['keywords'],
+                           'Rule_Match_P': tmp_dict['path'], 'Rule_Match_C': tmp_dict['content'],
+                           'Rule_Match_Cs': auto_content,
                            "flag": 0, "Article_Keyword": 0, "Article_Keywords": 0, "Article_Keywords_3": 0
                            }
-
                     self.mongo_obj.insert_data(tmp)
 
             except Exception as e:
                 print('写入数据库错误', e)
-            #print('save用时：', time.time() - start)
+            """
+            del tmp,tmp_dict,html,auto_content
+            gc.collect()
+            """
+            print('save用时：', time.time() - start)
+
         except Exception as e:
             print ('出错：',e)
 
-    def check_url_getdata(self, url, task_id):  # 检查url是否获得过结果
-        return self.db_obj.check_url_Rule(url, task_id)
 
     def clear_url_getdata(self, task_id):  # 清理该任务ID的全部结果
-        self.db_obj.clear_url_Rule(task_id)
+        pass
 
     def auto_content(self, html):  # 自动匹配正文
         try:
@@ -121,6 +129,8 @@ class crawl_obj:
             return '0'
 
     def get(self, url):
+
+        start = time.time()
         try:
             r = requests.get(url, allow_redirects=False, timeout=self.timeout, headers=self.headersParameters,proxies=self.proxies)
         except:
@@ -132,7 +142,6 @@ class crawl_obj:
                 pagesoup = BeautifulSoup(html, 'lxml')
                 if not html:
                     return all_link
-                # self.db_obj.test1(r.url,html.replace("'",'"'))
                 self.save_data(html, r.url)  # 解析保存该页面的内容
                 for inner in pagesoup.find_all(name='a', attrs={"href": re.compile('')}):
                     try:
@@ -140,11 +149,18 @@ class crawl_obj:
                         if 'javascript' in url_i or '#' in url_i:
                             continue
                         url_i = urljoin(url, url_i)
-                        if self.filter_url(url_i):
-                            all_link.append(url_i)
+                        if url_i not in all_link:
+                            if self.filter_url(url_i):
+                                all_link.append(url_i)
                     except Exception as e:
                         print(e)
                         pass
+                """
+                del html
+                del pagesoup
+                gc.collect()
+                """
+                #print ("时间：",time.time()-start,"长度：",len(all_link))
                 return all_link
 
 
@@ -224,10 +240,10 @@ class crawl_obj:
         self.input_url = data[0]
         # 将入口url的根域名解析出来
         url = data[0].replace('//', "(|-|)")
-        res_list = url.split('/')  # 将url拆分成域名与目录，文件
-        domain = res_list[0].replace("(|-|)", "//")# 域名
+        res_list = url.split('/')  # 将url拆分成域名与目录,文件
+        domain = res_list[0].replace("(|-|)", "//")#域名
         try:
-            self.domain = get_tld(domain)# 获取根域名
+            self.domain = get_tld(domain)#获取根域名
         except Exception as e:
             print("unkonw")
         self.domain_list.append(self.domain)#必须包含根域名
@@ -274,7 +290,7 @@ class crawl_obj:
 
     def validatechar(self, str):
         rstr = r"[\/\\\:\*\?\"\<\>\|]"  # '/ \ : * ? " < > |'
-        new_str = re.sub(rstr, "", str)
+        new_str = re.sub(rstr, "", str)  # 替换为下划线
         return new_str
 
     def match_result(self, html_str, step_one=[]):
@@ -360,7 +376,7 @@ class crawl_obj:
         driver.get(input_url)
         html = driver.page_source
         driver.quit()
-        pagesoup = BeautifulSoup(html, 'lxml')
+        pagesoup = BeautifulSoup(html,'lxml')
         for link in pagesoup.find_all(name='a', attrs={"href": re.compile('')}):
             url_i = link.get('href')
             if 'javascript' in url_i or '#' in url_i:
@@ -384,38 +400,43 @@ class crawl_obj:
                 all_link.append(url_i)
         return all_link
 
-
     def run(self,task):
         self.get_filter_rule(task)#得到过滤规则
         all_link = self.get_all_link(self.input_url)
         start = time.time()
         all_link = list(set(all_link))
-        print (all_link)
         inner_all_link = copy.copy(all_link)
         if self.Task_Deep == 0:
-            self.Task_Deep = 100
+            self.Task_Deep = 10
+        
         for _ in range(self.Task_Deep):  # 循环深度大于1
-            print('层数：', _,'总计抓取个数', len(inner_all_link))
+            print('层数：', _, '总计抓取个数', len(inner_all_link))
             Iter_obj = self.crawl_url(inner_all_link)
+            del inner_all_link
+            gc.collect()
             inner_all_link=[]
             for link_list in Iter_obj:
                 tmp = link_list.get()
                 if tmp:
                     inner_all_link.extend(tmp)
-            inner_all_link =list(set(inner_all_link)-set(all_link))
+            inner_all_link = list(set(inner_all_link) - set(all_link))
+            del Iter_obj
+            gc.collect()
             all_link.extend(inner_all_link)
             print ('获取URL个数总计：',len(all_link))
             print('总计用时：',time.time()-start)
+        del all_link
+        gc.collect()
 
     def selenium_run(self,task):
-        self.get_filter_rule(task) #得到过滤规则
+        self.get_filter_rule(task)#得到过滤规则
         all_link = self.get_all_selenium_link(self.input_url)
         all_link = list(set(all_link))
         start = time.time()
         inner_all_link = copy.copy(all_link)
         if self.Task_Deep == 0:
             self.Task_Deep = 100
-        for _ in range(self.Task_Deep):  # 循环深度大于1
+        for _ in range(self.Task_Deep):#循环深度大于1
             print('层数：', _, '总计抓取个数', len(inner_all_link))
             #print (inner_all_link)
             Iter_obj = self.selenium_crawl_url(inner_all_link)
@@ -425,10 +446,13 @@ class crawl_obj:
                 if tmp:
                     inner_all_link.extend(tmp)
             inner_all_link = list(set(inner_all_link) - set(all_link))
+            del Iter_obj
+            gc.collect()
             all_link.extend(inner_all_link)
             print('获取URL个数总计：', len(all_link))
-            print('总计用时：', time.time() - start)
-
+            print('总计用时：',time.time() - start)
+        del all_link
+        gc.collect()
 
 if __name__ =='__main__':
 
